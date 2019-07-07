@@ -20,6 +20,14 @@ if !exists('g:ex_project_enable_help')
     let g:ex_project_enable_help = 1
 endif
 
+if !exists('g:ex_project_folder_label')
+    let g:ex_project_folder_label = '[F]'
+endif
+
+if !exists('g:ex_project_folder_label_closed')
+    let g:ex_project_folder_label_closed = '[+]'
+endif
+
 "}}}
 
 " commands {{{1

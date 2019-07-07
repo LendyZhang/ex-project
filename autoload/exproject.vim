@@ -15,6 +15,8 @@ let s:help_text_short = [
             \ '',
             \ ]
 let s:help_text = s:help_text_short
+
+let s:folder_label_pattern = escape(g:ex_project_folder_label, "\\$.*~^[]")
 " }}}
 
 " internal functions {{{1
@@ -33,7 +35,7 @@ endfunction
 function s:getname( linenr )
     let line = getline(a:linenr)
     " let line = substitute(line,'.\{-}\[.\{-}\]\(.\{-}\)','\1','')
-    let line = substitute(line,'.\{-}-\(\[F\]\)\{0,1}\(.\{-}\)','\2','')
+    let line = substitute(line,'.\{-}-\('.s:folder_label_pattern.'\)\{0,1}\(.\{-}\)','\2','')
     let idx_end_1 = stridx(line,' {')
     let idx_end_2 = stridx(line,' }')
     if idx_end_1 != -1
@@ -51,7 +53,7 @@ function s:getpath( linenr )
     let fullpath = ""
 
     " recursively make full path
-    if match(getline(a:linenr),'[^^]-\C\[F\]') != -1
+    if match(getline(a:linenr),'[^^]-\C'.s:folder_label_pattern) != -1
         let fullpath = s:getname( a:linenr )
     endif
 
@@ -60,7 +62,7 @@ function s:getpath( linenr )
     while foldlevel > 1 " don't parse level:0
         let foldlevel -= 1
         let level_pattern = repeat('.',foldlevel*2)
-        let fold_pattern = '^'.level_pattern.'-\C\[F\]'
+        let fold_pattern = '^'.level_pattern.'-\C'.s:folder_label_pattern
         let searchpos = s:search_for_pattern(searchpos , fold_pattern)
         if searchpos
             let fullpath = s:getname(searchpos).'/'.fullpath
@@ -275,9 +277,9 @@ function s:build_tree( entry_path, file_pattern, file_ignore_pattern, folder_pat
             endif
             let end_fold = end_fold . ' }'
             silent put! = end_space
-            silent put! = space.'[F]'.short_dir . ' {' . end_fold
+            silent put! = space.g:ex_project_folder_label.short_dir . ' {' . end_fold
         else
-            silent put! = space.'[F]'.short_dir . ' {'
+            silent put! = space.g:ex_project_folder_label.short_dir . ' {'
         endif
     endif
 
@@ -461,7 +463,7 @@ endfunction
 " This functions used in ftplugin/exproject.vim for 'setlocal foldtext=' 
 function exproject#foldtext()
     let line = getline(v:foldstart)
-    let line = substitute(line,'\[F\]\(.\{-}\) {.*','\[+\]\1 ','')
+    let line = substitute(line, s:folder_label_pattern.'\(.\{-}\) {.*', escape(g:ex_project_folder_label_closed, "\\$.*~^[]").'\1 ', '')
     return line
 endfunction
 
@@ -485,7 +487,7 @@ function exproject#confirm_select(modifier)
     let cursor_col = col('.')
 
     " if this is a fold, do fold operation or open the path by terminal
-    if foldclosed('.') != -1 || match(curline, '\C\[F\]') != -1
+    if foldclosed('.') != -1 || match(curline, '\C'.s:folder_label_pattern) != -1
         if a:modifier == 'shift'
             call ex#os#open(s:getpath(cursor_line))
         else
@@ -638,7 +640,7 @@ function exproject#refresh_current_folder()
 
     " if the line is neither a file/folder line nor a root folder line, return 
     let file_line = getline('.') 
-    if match(file_line, '\( |\)\+-\{0,1}.*') == -1 && match(file_line, '-\C\[F\]') == -1
+    if match(file_line, '\( |\)\+-\{0,1}.*') == -1 && match(file_line, '-\C'.s:folder_label_pattern) == -1
         call ex#warning( "Please select a file/folder for refresh" )
         return
     endif
@@ -653,10 +655,10 @@ function exproject#refresh_current_folder()
     let fold_level -= 1
     let level_pattern = repeat('.',fold_level*2)
     let full_path_name = ''
-    let fold_pattern = '^'.level_pattern.'-\C\[F\]'
+    let fold_pattern = '^'.level_pattern.'-\C'.s:folder_label_pattern
 
     " get first fold name
-    if match(file_line, '\C\[F\]') == -1
+    if match(file_line, '\C'.s:folder_label_pattern) == -1
         if search(fold_pattern,'b')
             let full_path_name = s:getname(line('.'))
         else
@@ -686,7 +688,7 @@ function exproject#refresh_current_folder()
         while fold_level > 1
             let fold_level -= 1
             let level_pattern = repeat('.',fold_level*2)
-            let fold_pattern = '^'.level_pattern.'-\C\[F\]'
+            let fold_pattern = '^'.level_pattern.'-\C'.s:folder_label_pattern
             if search(fold_pattern,'b')
                 let full_path_name = s:getname(line('.')).'/'.full_path_name
             else
@@ -729,14 +731,14 @@ function exproject#refresh_current_folder()
     let cur_line = getline('.')
 
     " if this is a empty directory, return
-    let pattern = '\C\[F\].*\<' . short_dir . '\> {'
+    let pattern = '\C'.s:folder_label_pattern.'.*\<' . short_dir . '\> {'
     if match(cur_line, pattern) == -1
         call ex#warning ('The folder is empty')
         return
     endif
 
-    let idx_start = stridx(cur_line, ']')
-    let start_part = strpart(cur_line,0,idx_start+1)
+    let idx_start = stridx(cur_line, g:ex_project_folder_label)
+    let start_part = strpart(cur_line, 0, idx_start + strlen(g:ex_project_folder_label))
 
     let idx_end = stridx(cur_line, ' {')
     let end_part = strpart(cur_line,idx_end)
@@ -784,7 +786,7 @@ function exproject#newfile()
     endif
 
     " if this is directory
-    if match(cur_line, '\C\[F\]') != -1
+    if match(cur_line, '\C'.s:folder_label_pattern) != -1
         let idx = stridx(cur_line, '}')
         if idx == -1
             silent exec 'normal! j"tyy"tP'
@@ -823,7 +825,7 @@ endfunction
 function exproject#newfolder()
     " check if the line is valid folder line
     let cur_line = getline('.') 
-    if match(cur_line, '\C\[F\]') == -1
+    if match(cur_line, '\C'.s:folder_label_pattern) == -1
         call ex#warning ("Can't create new folder here, Please move your cursor to a parent folder.")
         return
     endif
@@ -852,7 +854,7 @@ function exproject#newfolder()
 
     let reg_t = @t
     if foldclosed('.') != -1
-        silent exec 'normal! j"tyy"t2p$a-[F]' . foldername . ' { }'
+        silent exec 'normal! j"tyy"t2p$a-' . g:ex_project_folder_label . foldername . ' { }'
         return
     endif
 
@@ -860,13 +862,13 @@ function exproject#newfolder()
     if idx == -1
         let file_line = cur_line
         put = file_line
-        silent call search('-\[F\]','c')
-        silent exec 'normal! c$ |-[F]' . foldername . ' { }'
+        silent call search('-'.s:folder_label_pattern, 'c')
+        silent exec 'normal! c$ |-' . g:ex_project_folder_label . foldername . ' { }'
     else
         let surfix = strpart(cur_line,idx-1)
         silent call setline('.',strpart(cur_line,0,idx-1))
         let file_line = strpart(cur_line, 0, stridx(cur_line,'-')) 
-                    \ . ' |-[F]' 
+                    \ . ' |-' . g:ex_project_folder_label 
                     \ . foldername 
                     \ . ' { }' 
                     \ . surfix

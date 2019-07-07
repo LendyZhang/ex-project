@@ -12,10 +12,12 @@ syntax match ex_pj_help_comma ':' contained
 syntax match ex_pj_fold '{\|}'
 syntax match ex_pj_tree_line '\( |\)\+-\{0,1}.*' contains=ex_pj_folder_name,ex_pj_file_name
 
-syntax match ex_pj_folder_label '\C\[F\]'
-syntax match ex_pj_folder_name '\C\[F\].*'hs=s+3 contains=ex_pj_folder_label,ex_pj_fold
+let s:folder_label_pattern = escape(g:ex_project_folder_label, "\\$.*~^[]")
+let s:folder_label_size = strchars(g:ex_project_folder_label)
 
-syntax match ex_pj_file_name '|-[^\[]\+'ms=s+2 contains=@ex_pj_special_files,ex_pj_fold
+exec 'syntax match ex_pj_folder_label "\C' . s:folder_label_pattern . '"'
+exec 'syntax match ex_pj_folder_name "\C' . s:folder_label_pattern . '.*"hs=s+' . s:folder_label_size . ' contains=ex_pj_folder_label,ex_pj_fold'
+exec 'syntax match ex_pj_file_name "|-\(\C' . s:folder_label_pattern . '\)\@!.\+"ms=s+2 contains=@ex_pj_special_files,ex_pj_fold'
 
 syntax match ex_pj_ft_clang_src '.*\.\(c\|cpp\|cxx\)\>' contained
 syntax match ex_pj_ft_clang_header '.*\.\(h\)\>' contained
@@ -50,7 +52,7 @@ hi default link ex_pj_help_comma Special
 hi default link ex_pj_fold exTransparent
 hi default link ex_pj_tree_line Comment
 
-hi default link ex_pj_folder_label Title
+hi default link ex_pj_folder_label Type
 hi default link ex_pj_folder_name Directory
 
 hi default link ex_pj_file_name Normal
@@ -65,7 +67,7 @@ hi default link ex_pj_ft_clang_src Normal
 hi default link ex_pj_ft_clang_header Normal
 hi default link ex_pj_ft_script Normal
 hi default link ex_pj_ft_html helpVim
-hi default link ex_pj_ft_style Label 
+hi default link ex_pj_ft_style Label
 
 let b:current_syntax = "exproject"
 
